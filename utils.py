@@ -3,7 +3,11 @@ import numpy as np
 
 def write_file(list_, title):
     with open(title, 'w') as file_:
-        file_.write('\n'.join(map(str, list_)))
+        file_.write('\n'.join(map(str, list_)) + '\n')
+
+def write_traj(list_, title):
+    with open(title, 'w') as file_:
+        file_.write('\n'.join([ '  '.join(map(str,_)) for _ in list_]) + '\n')
 
 
 def create_hamiltonian(M, coupling, frequency, mass, *xi):
@@ -25,17 +29,18 @@ def create_hamiltonian(M, coupling, frequency, mass, *xi):
 
 def give_lowest_eigen(hamiltonian):
     eigenValues, eigenVectors = np.linalg.eig(hamiltonian)
-    idx = eigenValues.argsort()[::-1]
+    idx = eigenValues.argsort()
     eigenValues = eigenValues[idx]
     eigenVectors = eigenVectors[:, idx]
-    return eigenValues[0], eigenVectors[0]
+    return eigenValues[0], eigenVectors[:,0]
 
-
-def run_monte_carlo(mass, coupling, frequency, reorga, kbT, size, nsteps, grid):
-    M = np.sqrt(reorga * mass * frequency ** 2 / 2)
+def run_monte_carlo(mass, coupling, frequency, reorga, kbT, size, nsteps, grid, print_traj = False):
+    M = np.sqrt(reorga * mass * frequency ** 2 )
     xunit = M / (mass * frequency ** 2)
 
-    delta = xunit / grid
+    delta = xunit * grid
+
+    traj = []
 
     now_x = np.random.normal(loc=0, scale=((mass * frequency ** 2) / kbT), size=size)
     hamiltonian = create_hamiltonian(M, coupling, frequency, mass, *now_x)
@@ -43,6 +48,8 @@ def run_monte_carlo(mass, coupling, frequency, reorga, kbT, size, nsteps, grid):
     now_ipr = 1 / np.sum(np.power(now_vector, 4))
     energies = [now_energy]
     ipr = [now_ipr]
+    if print_traj:
+        traj.append(now_x)
 
     for step in range(nsteps):
         try_x = now_x + np.random.normal(loc=0, scale=(delta), size=size)
@@ -63,5 +70,7 @@ def run_monte_carlo(mass, coupling, frequency, reorga, kbT, size, nsteps, grid):
             now_ipr = now_ipr
         energies.append(now_energy)
         ipr.append(now_ipr)
-    return energies, ipr
+        if print_traj:
+            traj.append(now_x)
+    return energies, ipr, traj
 

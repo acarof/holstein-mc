@@ -1,15 +1,15 @@
 import numpy as np
-import random
+
 
 
 def write_file(list_, title):
     with open(title, 'w') as file_:
-        file_.write('\n'.join(map(str, list_)) + '\n')
+        if any(isinstance(el, np.ndarray) for el in list_):
+            file_.write('\n'.join(['  '.join(map(str, _)) for _ in list_]) + '\n')
+        else:
+            file_.write('\n'.join(map(str, list_)) + '\n')
 
 
-def write_traj(list_, title):
-    with open(title, 'w') as file_:
-        file_.write('\n'.join(['  '.join(map(str, _)) for _ in list_]) + '\n')
 
 
 def create_hamiltonian(M, couplings, frequency, mass, xi, massy=0, freqy=0, beta=0, yi=[]):
@@ -23,9 +23,8 @@ def create_hamiltonian(M, couplings, frequency, mass, xi, massy=0, freqy=0, beta
     for index, x in enumerate(xi):
         hamiltonian[index, index] = M * x + sum_
         if (index + 1) < size:
-            hamiltonian[index, index + 1] = beta * (yi[index + 1] - yi[index])
-            hamiltonian[index + 1, index] = beta * (yi[index + 1] - yi[index])
-    # print hamiltonian
+            hamiltonian[index, index + 1] += beta * (yi[index + 1] - yi[index])
+            hamiltonian[index + 1, index] += beta * (yi[index + 1] - yi[index])
     return hamiltonian
 
 
@@ -75,7 +74,6 @@ def run_monte_carlo(mass, dim_couplings, frequency, reorga,
     size = length ** dim
     couplings = couplings_hamilt(length, dim, dim_couplings)
 
-    # print couplings
 
     def add_properties(properties, now_energies, now_vectors, now_state, now_x):
         if 'energies' in properties:

@@ -29,12 +29,12 @@ def create_hamiltonian(M, couplings, frequency, mass, xi, massy=0, freqy=0, beta
     return hamiltonian
 
 
-def give_eigen(hamiltonian, state):
+def give_eigen(hamiltonian):
     eigenValues, eigenVectors = np.linalg.eig(hamiltonian)
     idx = eigenValues.argsort()
     eigenValues = eigenValues[idx]
     eigenVectors = eigenVectors[:, idx]
-    return eigenValues[state], eigenVectors[:, state]
+    return eigenValues, eigenVectors
 
 
 def couplings_hamilt(size, dim, dim_coupling):
@@ -77,25 +77,32 @@ def run_monte_carlo(mass, dim_couplings, frequency, reorga,
 
     # print couplings
 
-    def add_properties(properties, now_energy, now_vector, now_state, now_x):
+    def add_properties(properties, now_energies, now_vectors, now_state, now_x):
         if 'energies' in properties:
-            properties['energies'].append(now_energy)
+            properties['energies'].append(now_energies[now_state])
         if 'IPR' in properties:
-            properties['IPR'].append(1 / np.sum(np.power(now_vector, 4)))
+            properties['IPR'].append(1 / np.sum(np.power(now_vectors[:, now_state], 4)))
         if 'state' in properties:
             properties['state'].append(now_state)
         if 'traj' in properties:
             properties['traj'].append(now_x)
         if 'trajy' in properties:
             properties['trajy'].append(now_y)
+        if 'all-ener' in properties:
+            for ener in now_energies:
+                properties['all-ener'].append(ener)
+        if 'all-IPR' in properties:
+            for index in range(len(now_energies)):
+                vector = now_vectors[:, index]
+                properties['all-IPR'].append(1 / np.sum(np.power(vector, 4)))
 
     now_x = np.random.normal(loc=0, scale=((mass * frequency ** 2) / kbT), size=size)
     now_y = np.random.normal(loc=0, scale=((mass * frequency ** 2) / kbT), size=size)
     now_x = np.zeros(size)
     now_state = 0
     hamiltonian = create_hamiltonian(M, couplings, frequency, mass, now_x, massy, freqy, beta, now_y)
-    now_energy, now_vector = give_eigen(hamiltonian, now_state)
-    add_properties(properties, now_energy, now_vector, now_state, now_x)
+    now_energies, now_vectors = give_eigen(hamiltonian)
+    add_properties(properties, now_energies, now_vectors, now_state, now_x)
 
     for step in range(nsteps):
         do_test = True
@@ -113,12 +120,13 @@ def run_monte_carlo(mass, dim_couplings, frequency, reorga,
                 do_test = False
         if do_test:
             hamiltonian = create_hamiltonian(M, couplings, frequency, mass, try_x, massy, freqy, beta, try_y)
-            try_energy, try_vector = give_eigen(hamiltonian, try_state)
-            energy_diff = now_energy - try_energy
+            try_energies, try_vectors = give_eigen(hamiltonian)
+            try_energy = try_energies[try_state]
+            energy_diff = now_energies[now_state] - try_energy
             boltmzan_weight = np.exp(energy_diff / kbT)
             if np.random.uniform() < boltmzan_weight:
-                now_energy = try_energy
-                now_vector = try_vector
+                now_energies = try_energies
+                now_vectors = try_vectors
                 if tosample == 'local':
                     now_x = try_x
                 elif tosample == 'state':
@@ -126,6 +134,6 @@ def run_monte_carlo(mass, dim_couplings, frequency, reorga,
                 elif tosample == 'nonlocal':
                     now_y = try_y
 
-        add_properties(properties, now_energy, now_vector, now_state, now_x)
+        add_properties(properties, now_energies, now_vectors, now_state, now_x)
     return properties
 

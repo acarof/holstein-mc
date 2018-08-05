@@ -32,22 +32,39 @@ print 'Number of traj:', len(mega_list)
 
 def prerun_mc(dict_):
     mass = dict_.get('MASS', 1)
-    coupling_ha = dict_['COUPLING'] * 0.036749305  # Convert from eV to Ha
+    coupling = dict_['COUPLING']
+    dim = len(coupling)
+    coupling_ha = 0.036749305 * np.array(coupling)  # Convert in Ha
     frequency = dict_.get('FREQUENCY', 1600)
     frequency_ha = frequency * 0.00000455633528 #  Convert from cm in Ha
     reorga = dict_.get('REORGA', 0.200)
-    reorga_ha = dict_.get('REORGA', 0.200) * 0.036749305  # Convert from eV to Ha
-    kbT = dict_.get('TEMPERATURE', 300) *0.0000031667909 # convert from K to Ha
-    size = dict_.get('SIZE', 2)
+    reorga_ha = reorga * 0.036749305  # Convert from eV to Ha
+    kbT = dict_.get('TEMP', 300) *0.0000031667909 # convert from K to Ha
     nsteps = dict_.get('NSTEPS', 1000000)
-    grid = dict_.get('GRID', 1)
-    path = dict_.get('PATH', '.')
+    grid = dict_.get('GRID', 0.1)
+    length = dict_.get('LENGTH')
+    #path = dict_.get('PATH', '.')
+    sampling = dict_.get('SAMPLE', ['local'])
+    toprint = dict_.get('PROPERTIES', ['energies'])
 
-    energies, ipr, traj = run_monte_carlo(mass, coupling_ha, frequency_ha, reorga_ha, kbT, size, nsteps, grid, print_traj=False)
-    title = 'coupling_%s-temp_%s-grid_%s-size_%s-freq_%s-reorga_%s' % (dict_['COUPLING'], dict_.get('TEMPERATURE', 300), grid, size, frequency, reorga)
-    write_file(energies, title = '%s/energies-%s.dat' % (path, title))
-    write_file(ipr, title='%s/ipr-%s.dat' % (path, title))
-    #write_traj(traj, title='%s/traj-%s.dat' % (path, title))
+    massy = dict_.get('MASSY', 0)
+    freqy = dict_.get('FREQY', 0)
+    beta = dict_.get('BETA', 0)
+
+
+
+    properties = run_monte_carlo(mass, coupling_ha, frequency_ha, reorga_ha,
+                                 massy, freqy, beta,
+                                 kbT, length, nsteps, grid, dim,
+                                 sampling=sampling,
+                                 toprint=toprint)
+
+    title_set = dict_.get('TITLE')
+    title = ''
+    for info in sorted(title_set):
+        title += '%s_%s-' % (info, dict_[info])
+    for prop in toprint:
+        write_file(properties[prop], title = '%s/%s-%s.dat' % (path, prop, title))
 
 
 
